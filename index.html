@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Markdown Editor with Customization</title>
+    <style>
+        .container {
+          display: flex;
+        }
+      
+        #markdown-editor {
+            width: calc(50% - 1rem);
+            height: calc(100vh);
+            resize: vertical;
+            margin-right: 0.5rem;
+        }
+      
+        #output-container {
+          overflow: hidden;
+          width: calc(50% - 1rem);
+          margin-bottom: 1rem;
+          margin-left: 0.5rem;
+        }
+      </style>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.3.3/html2canvas.min.js"></script>
+</head>
+<body>
+
+        <div id="settings">
+            <label>
+                Font:
+                <select id="font-selector">
+                    <option value="'Arial', sans-serif">Arial</option>
+                    <option value="'Times New Roman', serif">Times New Roman</option>
+                    <option value="'Courier New', monospace">Courier New</option>
+                    <option value="'楷体-简'">楷体</option>
+    
+                </select>
+            </label>
+            <label>
+                Font Size:
+                <input id="font-size" type="number" min="1" value="16">
+            </label>
+            <label>
+                Output Width:
+                <input id="output-width" type="number" min="1" value="400">
+            </label>
+        </div>
+        <div class="container">
+            <textarea id="markdown-editor" oninput="renderMarkdown()"></textarea>
+            <div id="output-container"></div>
+        </div>
+
+
+    <script>
+        function renderMarkdown() {
+            const markdownEditor = document.getElementById("markdown-editor");
+            const markdownContent = markdownEditor.value;
+            const outputContainer = document.getElementById("output-container");
+            const md = new markdownit();
+            const renderedContent = md.render(markdownContent);
+
+            outputContainer.innerHTML = '';
+
+            const paragraphs = renderedContent.split(/<\/p>/g);
+            paragraphs.forEach((paragraph, index) => {
+                if (paragraph.trim() === '') return;
+
+                const outputDiv = document.createElement('div');
+                outputDiv.style.fontFamily = document.getElementById('font-selector').value;
+                outputDiv.style.fontSize = document.getElementById('font-size').value + 'px';
+                outputDiv.style.width = document.getElementById('output-width').value + 'px';
+                outputDiv.style.border = '1px solid #ccc';
+                outputDiv.style.marginBottom = '1rem';
+                outputDiv.style.paddingLeft = '5px';
+                outputDiv.style.paddingRight = '5px';
+                outputDiv.innerHTML = paragraph + '</p>';
+                outputContainer.appendChild(outputDiv);
+
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Save as Image';
+                saveButton.style.marginBottom = '1rem';
+                saveButton.onclick = () => saveAsImage(outputDiv);
+                outputContainer.appendChild(saveButton);
+
+                const copyButton = document.createElement('button');
+copyButton.textContent = 'Copy to Clipboard';
+copyButton.style.marginBottom = '1rem';
+copyButton.style.marginLeft = '1rem'; // 设置左侧间距，使新按钮与原按钮间隔一定距离
+copyButton.onclick = () => copyImageToClipboard(outputDiv);
+outputContainer.appendChild(copyButton);
+
+
+
+            });
+        }
+
+        function saveAsImage(outputDiv) {
+    const scaleFactor = 2;
+    const width = document.getElementById('output-width').value * scaleFactor;
+    const clonedOutputDiv = outputDiv.cloneNode(true);
+
+    clonedOutputDiv.style.fontFamily = document.getElementById('font-selector').value;
+    clonedOutputDiv.style.fontSize = (document.getElementById('font-size').value * scaleFactor) + 'px';
+    clonedOutputDiv.style.width = (width - 11 * scaleFactor) + 'px';
+    clonedOutputDiv.style.border = 'none'; 
+
+    const xmlDoc = new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'text/xml');
+    const svgElement = xmlDoc.firstChild;
+    svgElement.setAttribute('width', width +5 + 'px');
+    svgElement.setAttribute('height', outputDiv.offsetHeight * scaleFactor + 20 + 'px');
+
+    const foreignObject = xmlDoc.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    foreignObject.setAttribute('width', '100%');
+    foreignObject.setAttribute('height', '100%');
+
+    svgElement.appendChild(foreignObject);
+    foreignObject.appendChild(xmlDoc.importNode(clonedOutputDiv, true));
+
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outputDiv.clientWidth * scaleFactor;
+    canvas.height = outputDiv.clientHeight * scaleFactor;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = function() {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        const timestamp = new Date();
+        const imageName = timestamp.toISOString().replace(/[-:.]/g, '').substring(0, 12);
+        link.download = imageName + '.png';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+}
+
+
+function copyImageToClipboard(outputDiv) {
+    const scaleFactor = 2;
+    const width = document.getElementById('output-width').value * scaleFactor;
+    const clonedOutputDiv = outputDiv.cloneNode(true);
+
+    clonedOutputDiv.style.fontFamily = document.getElementById('font-selector').value;
+    clonedOutputDiv.style.fontSize = (document.getElementById('font-size').value * scaleFactor) + 'px';
+    clonedOutputDiv.style.width = (width - 11 * scaleFactor) + 'px';
+    clonedOutputDiv.style.border = 'none';
+
+    const xmlDoc = new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'text/xml');
+    const svgElement = xmlDoc.firstChild;
+    svgElement.setAttribute('width', width + 5 + 'px');
+    svgElement.setAttribute('height', outputDiv.offsetHeight * scaleFactor + 20 + 'px');
+
+    const foreignObject = xmlDoc.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    foreignObject.setAttribute('width', '100%');
+    foreignObject.setAttribute('height', '100%');
+
+    svgElement.appendChild(foreignObject);
+    foreignObject.appendChild(xmlDoc.importNode(clonedOutputDiv, true));
+
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outputDiv.clientWidth * scaleFactor;
+    canvas.height = outputDiv.clientHeight * scaleFactor;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = async function() {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+        try {
+            const clipboardItem = new ClipboardItem({ 'image/png': blob });
+            await navigator.clipboard.write([clipboardItem]);
+            alert('Image copied to clipboard!');
+        } catch (err) {
+            console.error('Failed to copy image to clipboard:', err);
+            alert('Failed to copy image to clipboard. Please try again.');
+        }
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+}
+
+
+
+
+        document.getElementById('font-selector').addEventListener('change', renderMarkdown);
+        document.getElementById('font-size').addEventListener('change', renderMarkdown);
+        document.getElementById('output-width').addEventListener('change', renderMarkdown);
+    </script>
+</body>
+</html>
