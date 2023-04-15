@@ -74,6 +74,21 @@
           }
           reader.readAsDataURL(input.files[0]);
         }
+        d3.select("#cutContainer").selectAll("line").remove();
+d3.select("#cutContainer").selectAll("line")
+    .data(cutLines)
+    .enter()
+    .append("line")
+    .attr("x1", function(d) { return d.start[0]; })
+    .attr("y1", function(d) { return d.start[1]; })
+    .attr("x2", function(d) { return d.end[0]; })
+    .attr("y2", function(d) { return d.end[1]; })
+    .attr("stroke", "red")
+    .attr("stroke-width", "3px")
+    .attr("cursor", "pointer")
+    .on("mousedown", startCut)
+    .on("mouseup", endCut);
+d3.select("#downloadButton").attr("disabled", null);
       }
 
       function splitImage() {
